@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreatTech POS - Point of Sale (Production Ready)</title>
+    
+    <!-- Eksternal Assets (CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/enhanced-interactivity.js" defer></script>
+
+    <!-- Internal CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive-interactive.css">
+</head>
+<body>
+    <header class="header">
+        <h1>GreatTech POS</h1>
+        <div class="user-info">
+            <button id="dashboardBtn"><i class="fas fa-chart-line"></i> Dashboard</button>
+            <button id="settingsBtn"><i class="fas fa-cog"></i> Pengaturan</button>
+            <button id="storageBtn"><i class="fas fa-database"></i> Penyimpanan</button>
+            <button id="historyBtn"><i class="fas fa-clock-rotate-left"></i> Riwayat</button>
+            <span id="userInfoSpan">Kasir: Loading... | Toko: Loading...</span>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <section class="product-list-container">
+            <div class="filter-controls">
+                <div class="filter-tabs">
+                    <div class="filter-tab active" data-filter="all">Semua</div>
+                    <div class="filter-tab" data-filter="product">Sparepart</div>
+                    <div class="filter-tab" data-filter="service">Jasa Servis</div>
+                </div>
+                <input type="text" class="search-bar" id="searchBar" placeholder="Cari sparepart atau jasa...">
+            </div>
+            <div class="product-grid" id="productGrid"></div>
+            <div class="pagination-container" id="paginationContainer"></div>
+        </section>
+
+        <aside class="cart-container">
+            <div class="cart-header">
+                <h2>Keranjang Belanja</h2>
+                <button class="clear-cart-btn" id="clearCartBtn" style="display: none;">
+                    <i class="fas fa-trash"></i> Kosongkan
+                </button>
+            </div>
+            <div class="cart-items" id="cartItems"><p style="text-align: center; color: #777;">Keranjang masih kosong.</p></div>
+            
+            <div class="cart-summary">
+                <div class="summary-row"><span>Subtotal</span><span id="subtotal">Rp 0</span></div>
+                <div class="summary-row" id="taxRow">
+                    <span id="taxLabel">Pajak (10%)</span>
+                    <span id="tax">Rp 0</span>
+                </div>
+                <div class="summary-row total"><span>TOTAL</span><span id="total">Rp 0</span></div>
+                <button class="pay-button" id="payButton" disabled>BAYAR</button>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Modals -->
+    <div id="modalContainer">
+        <!-- Modal Pembayaran -->
+        <div id="paymentModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Pilih Metode Pembayaran</h2>
+                <div class="payment-options">
+                    <div class="payment-option" data-method="cash"><i class="fas fa-money-bill-wave"></i><div class="payment-option-name">Tunai</div></div>
+                    <div class="payment-option" data-method="ewallet"><i class="fas fa-mobile-screen"></i><div class="payment-option-name">E-Wallet</div></div>
+                    <div class="payment-option" data-method="transfer"><i class="fas fa-building-columns"></i><div class="payment-option-name">Transfer Bank</div></div>
+                </div>
+                <div id="paymentDetailsContainer" style="display: none;"></div>
+                <div class="modal-buttons">
+                    <button class="btn-cancel" id="cancelPayment">Batal</button>
+                    <button class="btn-confirm" id="confirmPayment" style="display:none;">Konfirmasi & Cetak Struk</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Struk -->
+        <div id="receiptModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <div class="receipt-content" id="receiptContent"></div>
+                <div class="receipt-actions">
+                    <button class="print-button" onclick="window.print()"><i class="fas fa-print"></i> Cetak</button>
+                    <button class="download-button" id="downloadPdfBtn"><i class="fas fa-download"></i> Unduh PDF</button>
+                    <button class="close-button"><i class="fas fa-arrow-left"></i> Kembali ke POS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pengaturan -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <div class="settings-header">
+                    <h2>Pengaturan Produk & Aplikasi</h2>
+                </div>
+                <div class="settings-tabs">
+                    <div class="settings-tab active" data-tab="product">Produk</div>
+                    <div class="settings-tab" data-tab="service">Jasa</div>
+                    <div class="settings-tab" data-tab="app">Pengaturan Aplikasi</div>
+                </div>
+                
+                <!-- Tab Konten untuk Produk -->
+                <div class="tab-content active" id="product-tab">
+                    <form id="productForm" class="product-form">
+                        <input type="hidden" id="productId">
+                        <div class="form-group"><label for="productSKU">SKU (Opsional)</label><input type="text" id="productSKU"></div>
+                        <div class="form-group"><label for="productName">Nama</label><input type="text" id="productName" required></div>
+                        <div class="form-group" id="stockGroup">
+                            <label for="productStock">Stok Awal</label>
+                            <input type="number" id="productStock" value="0" min="0">
+                        </div>
+                        <div class="form-group"><label for="productCost">Harga Beli (HPP)</label><input type="number" id="productCost" required min="0"></div>
+                        <div class="form-group"><label for="productPrice">Harga Jual</label><input type="number" id="productPrice" required min="0"></div>
+                        
+                        <div class="form-group full-width">
+                            <label>Gambar Produk</label>
+                            <div class="image-upload-group">
+                                <div class="form-group" style="margin: 0;">
+                                    <input type="file" id="productImage" accept="image/*" style="display:none;">
+                                    <button type="button" class="btn-edit" onclick="document.getElementById('productImage').click()">
+                                        <i class="fas fa-upload"></i> Pilih Gambar
+                                    </button>
+                                </div>
+                                <div class="image-preview-container" id="productImagePreview" onclick="document.getElementById('productImage').click()">
+                                    <i class="fas fa-image placeholder-icon"></i>
+                                    <button type="button" class="remove-image-btn" onclick="event.stopPropagation(); SettingsModule.removeProductImage();">&times;</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width"><button type="submit" id="submitProductBtn">Tambah Produk</button></div>
+                    </form>
+                    <table class="product-table">
+                        <thead><tr><th>SKU</th><th>Nama</th><th>Harga Beli</th><th>Harga Jual</th><th>Stok</th><th>Aksi</th></tr></thead>
+                        <tbody id="productTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Tab Konten untuk Jasa -->
+                <div class="tab-content" id="service-tab">
+                    <form id="serviceForm" class="product-form">
+                        <input type="hidden" id="serviceId">
+                        <div class="form-group"><label for="serviceSKU">SKU (Opsional)</label><input type="text" id="serviceSKU"></div>
+                        <div class="form-group"><label for="serviceName">Nama</label><input type="text" id="serviceName" required></div>
+                        <div class="form-group" id="durationGroup">
+                            <label for="serviceDuration">Durasi (menit)</label>
+                            <input type="number" id="serviceDuration" min="1">
+                        </div>
+                        <div class="form-group"><label for="serviceCost">Harga Beli (HPP)</label><input type="number" id="serviceCost" required min="0"></div>
+                        <div class="form-group"><label for="servicePrice">Harga Jual</label><input type="number" id="servicePrice" required min="0"></div>
+                        
+                        <div class="form-group full-width">
+                            <label>Gambar Jasa</label>
+                            <div class="image-upload-group">
+                                <div class="form-group" style="margin: 0;">
+                                    <input type="file" id="serviceImage" accept="image/*" style="display:none;">
+                                    <button type="button" class="btn-edit" onclick="document.getElementById('serviceImage').click()">
+                                        <i class="fas fa-upload"></i> Pilih Gambar
+                                    </button>
+                                </div>
+                                <div class="image-preview-container" id="serviceImagePreview" onclick="document.getElementById('serviceImage').click()">
+                                    <i class="fas fa-image placeholder-icon"></i>
+                                    <button type="button" class="remove-image-btn" onclick="event.stopPropagation(); SettingsModule.removeServiceImage();">&times;</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width"><button type="submit" id="submitServiceBtn">Tambah Jasa</button></div>
+                    </form>
+                    <table class="product-table">
+                        <thead><tr><th>SKU</th><th>Nama</th><th>Harga Beli</th><th>Harga Jual</th><th>Durasi</th><th>Aksi</th></tr></thead>
+                        <tbody id="serviceTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Tab Konten untuk Aplikasi -->
+                <div class="tab-content" id="app-tab">
+                    <h3>Pengaturan Aplikasi</h3>
+                    <form id="appSettingsForm" class="product-form">
+                        <div class="form-group">
+                            <label for="taxEnabled">Aktifkan Pajak</label>
+                            <select id="taxEnabled">
+                                <option value="true">Ya</option>
+                                <option value="false">Tidak</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="taxRateGroup">
+                            <label for="taxRate">Persentase Pajak (%)</label>
+                            <input type="number" id="taxRate" min="0" max="100" step="0.1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cashierName">Nama Layanan (pada Struk)</label>
+                            <input type="text" id="cashierName" placeholder="Contoh: Kasir, Teknisi">
+                        </div>
+                        <div class="form-group">
+                            <label for="storeName">Nama Toko (pada Struk)</label>
+                            <input type="text" id="storeName" placeholder="Contoh: Servis Pusat">
+                        </div>
+                        <div class="form-group full-width">
+                            <button type="submit">Simpan Pengaturan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Tambah/Kurangi Stok -->
+        <div id="addStockModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <span class="close-btn">&times;</span>
+            <h2 id="stockModalTitle">Tambah Stok Produk</h2>
+            <div id="stockModalInfo" style="background-color: var(--background-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <p style="margin: 0;"><strong>Produk:</strong> <span id="stockModalProductName">-</span></p>
+            <p style="margin: 0;"><strong>Harga Jual:</strong> <span id="stockModalProductPrice">-</span></p>
+            <p style="margin: 0;"><strong>Stok Saat Ini:</strong> <span id="stockModalProductStock">-</span></p>
+            </div>
+            <div class="form-group">
+            <label id="stockModalLabel" for="addStockAmount">Jumlah Stok yang Ditambahkan:</label>
+            <input type="number" id="addStockAmount" min="1" required>
+            </div>
+            <div class="modal-buttons">
+            <button class="btn-cancel" id="cancelAddStock">Batal</button>
+            <button class="btn-confirm" id="confirmAddStockBtn">Tambah Stok</button>
+            </div>
+        </div>
+        </div>
+
+        <!-- Modal Dashboard -->
+        <div id="dashboardModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Dashboard Analisis</h2>
+                <div class="dashboard-filters">
+                    <button class="active" data-filter="today">Hari Ini</button>
+                    <button data-filter="yesterday">Hari Kemarin</button>
+                    <button data-filter="week">Minggu Ini</button>
+                    <button data-filter="month">Bulan Ini</button>
+                </div>
+                <div class="dashboard-metrics" id="dashboardMetrics"></div>
+                
+                <div class="dashboard-chart-tabs">
+                    <button class="dashboard-chart-tab active" data-chart="revenue">Pendapatan</button>
+                    <button class="dashboard-chart-tab" data-chart="best-selling">Terlaris</button>
+                    <button class="dashboard-chart-tab" data-chart="profit-loss">Laba Rugi</button>
+                </div>
+                <div class="dashboard-chart-container">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="dashboard-chart-container" style="display: none;">
+                    <canvas id="bestSellingChart"></canvas>
+                </div>
+                <div class="dashboard-chart-container" style="display: none;">
+                    <div class="profit-loss-controls">
+                        <label for="profitLossStartDate">Dari:</label>
+                        <input type="date" id="profitLossStartDate">
+                        <label for="profitLossEndDate">Sampai:</label>
+                        <button id="applyProfitLossFilter">Terapkan Filter</button>
+                    </div>
+                    <canvas id="profitLossChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Riwayat -->
+        <div id="historyModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Riwayat Transaksi</h2>
+                <div class="history-controls">
+                    <div class="history-filters">
+                        <input type="date" id="historyDateFilter" onchange="HistoryModule.filterHistory()">
+                        <select id="historyMonthFilter" onchange="HistoryModule.filterHistory()">
+                            <option value="">Semua Bulan</option>
+                        </select>
+                        <input type="text" id="historySearchFilter" placeholder="Cari no. order..." onkeyup="HistoryModule.filterHistory()">
+                    </div>
+                    <div>
+                        <button class="export-button" onclick="HistoryModule.exportFilteredHistory()"><i class="fas fa-download"></i> Export Filter</button>
+                        <button class="export-button" onclick="HistoryModule.exportDailyToCSV()"><i class="fas fa-download"></i> Export Hari Ini</button>
+                    </div>
+                </div>
+                <div id="historyTableContainer">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>No. Order</th>
+                                <th>Tanggal</th>
+                                <th>Total</th>
+                                <th>Item</th>
+                                <th>Metode</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Manajemen Penyimpanan -->
+        <div id="storageModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Manajemen Penyimpanan</h2>
+                <div class="storage-management">
+                    <div class="storage-info">
+                        <div class="storage-card">
+                            <h4>Produk</h4>
+                            <p id="productStorageInfo">Memuat...</p>
+                        </div>
+                        <div class="storage-card">
+                            <h4>Transaksi Aktif</h4>
+                            <p id="orderStorageInfo">Memuat...</p>
+                        </div>
+                        <div class="storage-card">
+                            <h4>Status Penyimpanan</h4>
+                            <p id="storageStatusInfo">Memuat...</p>
+                        </div>
+                    </div>
+                    <div class="storage-actions">
+                        <button class="backup-btn" onclick="StorageModule.backupData()"><i class="fas fa-download"></i> Backup Data</button>
+                        <button class="restore-btn" onclick="document.getElementById('restoreFileInput').click()"><i class="fas fa-upload"></i> Restore Data</button>
+                        <input type="file" id="restoreFileInput" accept=".json" style="display:none;" onchange="StorageModule.restoreData(event)">
+                        <button class="update-btn" onclick="UpdateModule.checkForUpdates()"><i class="fas fa-sync-alt"></i> Cek Pembaruan Data</button>
+                        <button class="clear-btn" onclick="StorageModule.clearAllData()"><i class="fas fa-trash"></i> Hapus Semua Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pembaruan (Update) -->
+        <div id="updateModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h2>Pembaruan Data Tersedia</h2>
+                <p id="updateDetailsText">Memuat detail pembaruan...</p>
+                <div id="updateChangelogContainer"></div>
+                <div class="modal-buttons">
+                    <button class="btn-cancel" onclick="UIService.hideModal('updateModal')">Tutup</button>
+                    <button class="btn-confirm" id="applyUpdateBtn">Terapkan Pembaruan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Operasi berhasil!</span>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="modal" style="display: none;">
+        <div class="modal-content" style="text-align: center; padding: 2rem;">
+            <div class="spinner"></div>
+            <p>Sedang memproses...</p>
+        </div>
+    </div>
+
+    <!-- Internal JS -->
+    <script src="js/script.js" defer></script>
+    <script src="js/profit-loss-module.js" defer></script>
+</body>
+</html>
