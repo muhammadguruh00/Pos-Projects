@@ -11,6 +11,7 @@
     --border-color: #ddd; 
     --success-color: #28a745;
     --warning-color: #ffc107;
+    --menu-surface: rgba(255, 255, 255, 0.1);
 }
 
 body { 
@@ -24,13 +25,15 @@ body {
 }
 
 .header { 
-    background-color: var(--primary-color); 
+    background: linear-gradient(90deg, #0A2540 0%, #0f3556 100%);
     color: white; 
-    padding: 1rem 2rem; 
+    padding: 0.9rem 1.5rem; 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    gap: 1rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12); 
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
 .header h1 { 
@@ -39,28 +42,71 @@ body {
 }
 
 .header .user-info { 
-    font-size: 0.9rem; 
+    font-size: 0.88rem; 
     display: flex; 
     align-items: center; 
-    gap: 1rem; 
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.top-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem;
+    border-radius: 10px;
+    background: var(--menu-surface);
+    border: 1px solid rgba(255,255,255,0.16);
 }
 
 .header .user-info button { 
-    padding: 0.5rem 1rem; 
-    background-color: var(--secondary-color); 
+    padding: 0.5rem 0.75rem; 
+    background-color: transparent;
     color: white; 
-    border: none; 
-    border-radius: 5px; 
+    border: 1px solid transparent;
+    border-radius: 8px; 
     cursor: pointer; 
-    font-weight: bold; 
-    display: flex; 
+    font-weight: 600; 
+    display: inline-flex; 
     align-items: center; 
-    gap: 0.5rem; 
-    transition: background-color 0.2s;
+    gap: 0.45rem; 
+    transition: all 0.2s ease;
 }
 
 .header .user-info button:hover {
-    background-color: #0080c0;
+    background-color: rgba(255,255,255,0.14);
+    border-color: rgba(255,255,255,0.26);
+}
+
+#userInfoSpan {
+    padding: 0.45rem 0.7rem;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+
+@media (max-width: 900px) {
+    .header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .top-menu {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .header .user-info {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .header .user-info button {
+        flex: 1 1 calc(50% - 0.5rem);
+        justify-content: center;
+    }
 }
 
 .main-container { 
